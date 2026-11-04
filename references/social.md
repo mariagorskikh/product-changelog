@@ -1,6 +1,8 @@
 # Social posts: X thread, LinkedIn, community announcement
 
-Written after the email copy is final, from the same items in the same order. Show every draft to the user; they post it (or approve the exact text before anything goes out).
+Written after the email copy is final, from the same items in the same order. In autonomous mode, Claude self-reviews each post and publishes it with the tool named in `social.post_via` for that channel; channels with no tool get the final text and images handed over. In review mode, every draft is shown first and goes out only on the user's okay of the exact text.
+
+Self-review before posting: banned phrases and dashes (`lint_email.py` checks `social.md`), every claim against the live site, every link returns 200, item count, images attached natively. If a platform shows a login prompt, CAPTCHA, warning or rate-limit notice, stop posting on that channel and report it.
 
 ## Rules for every channel
 
@@ -71,7 +73,7 @@ Full thread on X: [link, once the thread is live]
 ```
 
 - One line per item, no blank lines between items. Cut every explanation the link can carry.
-- Whether to ping everyone is the user's call per issue.
+- Do not ping everyone (`@everyone`, `@channel`) unless config or the user says this community expects it.
 - Attach the changelog video as a native mp4 when one exists; Discord and Slack play small mp4s inline and the moving thumbnail carries the post.
 
 ## Save it

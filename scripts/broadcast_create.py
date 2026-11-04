@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
-"""Create a changelog broadcast draft on Resend, and send it on explicit go.
+"""Create a changelog broadcast draft on Resend, then send it with an explicit flag.
 
     python3 scripts/broadcast_create.py ISSUE_DIR              # dry run: show payload summary
     python3 scripts/broadcast_create.py ISSUE_DIR --create     # create a DRAFT (sends nothing)
+    python3 scripts/broadcast_create.py --send BROADCAST_ID    # shows the recipient count, refuses
     python3 scripts/broadcast_create.py --send BROADCAST_ID --yes-send-broadcast
+
+Pass --yes-send-broadcast only after the copy is reviewed: by the self-review
+gate in autonomous mode (the agent passes it itself), or by the user in review
+mode. If provider.monthly_quota is set and the send would exceed it, the
+script refuses unless --yes-over-quota is passed, which needs the user's yes
+in chat in every mode because it costs money.
 
 The draft is visible in the Resend dashboard, so you can eyeball it there.
 Sending delivers to EVERY subscribed contact in the audience; the script
@@ -25,7 +32,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _common import (  # noqa: E402
-    Resend, api_key, die, from_header, get, load_config, read_issue, require,
+    Resend, api_key, die, from_header, get, load_config, quota_check, read_issue,
+    require,
 )
 
 
@@ -39,7 +47,12 @@ def main() -> None:
     ap.add_argument("issue_dir", nargs="?")
     ap.add_argument("--create", action="store_true", help="create the draft broadcast")
     ap.add_argument("--send", metavar="BROADCAST_ID")
-    ap.add_argument("--yes-send-broadcast", action="store_true")
+    ap.add_argument("--yes-send-broadcast", action="store_true",
+                    help="confirms the whole audience; passed after the self-review gate (or the user's okay in review mode)")
+    ap.add_argument("--sent-this-month", type=int, default=0,
+                    help="emails already sent this month on the plan, for the quota check")
+    ap.add_argument("--yes-over-quota", action="store_true",
+                    help="only after the user's explicit yes in chat: going over the quota costs money")
     ap.add_argument("--config")
     args = ap.parse_args()
 
@@ -52,11 +65,16 @@ def main() -> None:
         live = sum(1 for c in contacts if not c.get("unsubscribed"))
         print(f"broadcast {args.send} would go to {live} subscribed contacts "
               f"({len(contacts) - live} unsubscribed are skipped by Resend)")
+        quota_check(cfg, live, args.sent_this_month, args.yes_over_quota)
         if not args.yes_send_broadcast:
-            print("\nREFUSING: pass --yes-send-broadcast to deliver to the whole audience.")
+            print("\nREFUSING: pass --yes-send-broadcast to deliver to the whole audience, "
+                  "once the copy passed review (self-review gate in autonomous mode, the user's "
+                  "okay in review mode).")
             return
         status, body = client.request("POST", f"/broadcasts/{args.send}/send", {})
         print(status, str(body)[:300])
+        if status not in (200, 201):
+            sys.exit(1)
         return
 
     if not args.issue_dir:
@@ -85,7 +103,7 @@ def main() -> None:
     status, body = Resend(api_key(cfg)).request("POST", "/broadcasts", payload)
     print(status, str(body)[:300])
     if status in (200, 201) and isinstance(body, dict):
-        print(f"\nDraft created. To send after explicit approval:\n"
+        print(f"\nDraft created. To send once the copy passed review:\n"
               f"  python3 scripts/broadcast_create.py --send {body.get('id')} --yes-send-broadcast")
 
 

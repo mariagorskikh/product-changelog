@@ -6,6 +6,16 @@ Dry run by default: prints what would be sent and sends nothing.
     python3 scripts/send_test.py ISSUE_DIR                 # dry run
     python3 scripts/send_test.py ISSUE_DIR --send          # really send the test
     python3 scripts/send_test.py ISSUE_DIR --to me@x.example --send
+    python3 scripts/send_test.py ISSUE_DIR --readback      # read the delivered test back
+
+Test sends go only to your own test recipients, so the agent sends them
+itself in autonomous mode once lint and the self-review pass.
+
+--readback fetches every message from ISSUE_DIR/test_results.jsonl through the
+provider API and checks what was actually delivered: last event is delivered
+(or opened/clicked), the subject matches, no {{...}} or [[...]] placeholder
+survived, the greeting and unsubscribe line rendered, and the text part is
+present. Exit code 1 if any check fails, so it can gate the real send.
 
 ISSUE_DIR holds email.html, email.txt and subject.txt, using the {{NAME}}
 and {{UNSUB_URL}} placeholders. Recipients default to test_recipients in
@@ -21,8 +31,10 @@ from __future__ import annotations
 
 import argparse
 import base64
+import json
 import re
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -37,12 +49,17 @@ def main() -> None:
     ap.add_argument("issue_dir")
     ap.add_argument("--to", action="append", help="override recipient email (repeatable)")
     ap.add_argument("--send", action="store_true", help="actually send (default is a dry run)")
+    ap.add_argument("--readback", action="store_true",
+                    help="fetch the delivered test copies from the provider and check them")
     ap.add_argument("--config")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
     workdir = Path(args.issue_dir)
     html_t, text_t, subject = read_issue(workdir)
+    if args.readback:
+        readback(cfg, workdir, subject)
+        return
     sender = from_header(cfg)
     reply_to = get(cfg, "sender.reply_to") or require(cfg, "sender.from_email")
 
@@ -80,6 +97,7 @@ def main() -> None:
         return
 
     client = Resend(api_key(cfg))
+    results = (workdir / "test_results.jsonl").open("w")
     for name, addr in recipients:
         greet = first_name(name) or get(cfg, "email.greeting_fallback", "there")
         unsub = unsubscribe_url(cfg, addr) if mode == "own_endpoint" else "#unsubscribe-preview"
@@ -100,6 +118,54 @@ def main() -> None:
             }
         status, body = client.request("POST", "/emails", payload)
         print(addr, status, str(body)[:200])
+        msg_id = body.get("id", "") if isinstance(body, dict) else ""
+        results.write(json.dumps({"email": addr, "id": msg_id, "status": status,
+                                  "subject": payload["subject"]}) + "\n")
+    results.close()
+    print(f"\nIDs saved to {workdir / 'test_results.jsonl'}. "
+          "Wait a minute, then run with --readback to check what was delivered.")
+
+
+def readback(cfg: dict, workdir: Path, subject: str) -> None:
+    path = workdir / "test_results.jsonl"
+    if not path.exists():
+        die(f"{path} not found; send the test first with --send")
+    recs = [json.loads(line) for line in path.open() if line.strip()]
+    client = Resend(api_key(cfg))
+    problems: list[str] = []
+    for r in recs:
+        if not r.get("id"):
+            problems.append(f"{r['email']}: send failed ({r.get('status')})")
+            continue
+        body: dict = {}
+        for _ in range(6):  # the event can lag the API accept by a few seconds
+            status, got = client.request("GET", f"/emails/{r['id']}")
+            body = got if isinstance(got, dict) else {}
+            if body.get("last_event") not in (None, "queued", "sent"):
+                break
+            time.sleep(5)
+        event = body.get("last_event", "unknown")
+        html, text = body.get("html") or "", body.get("text") or ""
+        issues = []
+        if event not in ("delivered", "opened", "clicked"):
+            issues.append(f"last event is {event!r}")
+        if body.get("subject") and body["subject"] != f"[TEST] {subject}":
+            issues.append(f"subject came back as {body['subject']!r}")
+        for name, part in (("html", html), ("text", text)):
+            if not part:
+                issues.append(f"{name} part missing")
+            elif re.search(r"\{\{|\[\[", part):
+                issues.append(f"{name} still has a {{{{...}}}} or [[...]] placeholder")
+        if html and not re.search(r"\bHi [^,<]{2,30},", html):
+            issues.append("greeting 'Hi <name>,' not found in html")
+        if html and "unsubscribe" not in html.lower():
+            issues.append("unsubscribe line not found in html")
+        print(f"  {'OK  ' if not issues else 'FAIL'} {r['email']} ({event})")
+        problems += [f"{r['email']}: {i}" for i in issues]
+    if problems:
+        print("\n".join(f"FAIL {p}" for p in problems))
+        sys.exit(1)
+    print("readback clean")
 
 
 if __name__ == "__main__":

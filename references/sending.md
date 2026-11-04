@@ -6,6 +6,8 @@ Everything below assumes Resend, the default provider. The flow carries over to 
 
 ## Setup once
 
+These are one-time choices made on the first run. Verifying a domain you already own is free; buying a new domain or upgrading the provider plan costs money and needs the user's yes.
+
 - Verify the sending domain with your provider (SPF, DKIM, and a DMARC record). Unverified domains land in spam.
 - Create an API key with sending and audience access, export it as the env var named in `provider.api_key_env`.
 - Choose an unsubscribe mode in config:
@@ -39,11 +41,12 @@ First-name cleaning (done by the scripts): take the first word of the display na
 
 1. **Lint.** `python3 scripts/lint_email.py ISSUE_DIR --check-links` must pass.
 2. **Test send dry run.** `python3 scripts/send_test.py ISSUE_DIR` shows subject, sender, recipients.
-3. **Test send.** Only after the user approved the draft in chat: `python3 scripts/send_test.py ISSUE_DIR --send`. Only to `test_recipients`. The user reads it in a real inbox on desktop and phone and replies with fixes or a go.
+3. **Test send.** After the copy passed the self-review gate (or, in review mode, the user approved the draft): `python3 scripts/send_test.py ISSUE_DIR --send`. Only to `test_recipients`.
+   Then `python3 scripts/send_test.py ISSUE_DIR --readback` pulls each delivered message from the provider API and checks the last event, subject, rendered greeting, unsubscribe line and leftover placeholders. In review mode the user also reads it in a real inbox on desktop and phone and replies with fixes or a go.
 4. **Verify unsubscribe works** (own_endpoint mode): open the link from the test copy, confirm the opt-out is recorded, then resubscribe so the test address is clean.
 5. **Build the audience** (fresh) and the opt-out list.
-6. **Dry run the blast** and show the user the counts: unique addresses, queued, excluded, unsubscribed, invalid.
-7. **Blast, on explicit go only.** The user must say yes to this specific send in chat.
+6. **Dry run the blast** and check the counts: unique addresses, queued, excluded, unsubscribed, invalid, and the quota line. In review mode, show them to the user.
+7. **Blast.** In autonomous mode, pass the send flag yourself once the audience checklist in SKILL.md passes. In review mode, the user must say yes to this specific send in chat. In every mode, a send that would exceed `provider.monthly_quota` costs money: ask the user, and pass `--yes-over-quota` only after their yes.
 
 ### Path A: broadcasts (provider-hosted unsubscribe)
 
@@ -72,11 +75,11 @@ python3 scripts/blast.py ISSUE_DIR                                 # dry run wit
 python3 scripts/blast.py ISSUE_DIR --send --yes-send-to-everyone   # real send
 ```
 
-Sequential, paced by `provider.send_interval_seconds`, resumable (a rerun skips every address already `ok` in `results.jsonl`). Every message carries `List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, which gives Gmail and Yahoo their native unsubscribe button and is required for bulk senders.
+Sequential, paced by `provider.send_interval_seconds`, resumable (a rerun skips every address already `ok` in `results.jsonl`). It stops itself and exits 2 when send errors reach `provider.max_failures` or the failure share goes above `provider.max_failure_rate` after 20 sends. Treat that as a hard stop: report the error, fix the cause, rerun to resume. Every message carries `List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, which gives Gmail and Yahoo their native unsubscribe button and is required for bulk senders.
 
 ## After the send
 
-- **Verify delivery.** Path B: `python3 scripts/verify_delivery.py ISSUE_DIR --sample 40`, expect nearly all delivered. Path A: the provider dashboard shows delivered, opened, clicked, bounced.
+- **Verify delivery.** Path B: `python3 scripts/verify_delivery.py ISSUE_DIR --sample 40`, expect nearly all delivered. Path A: `GET /broadcasts/{id}` for its status, and the provider dashboard for delivered, opened, clicked, bounced.
 - **Sync opt-outs back.** Path A: run `broadcast_unsubs.py` again after a day, and import the list into your own database if you keep one, so every other email you send honors it.
 - **Watch replies.** Replies to a changelog are the best product feedback you will get. Route them to someone who answers.
 

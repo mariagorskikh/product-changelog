@@ -1,6 +1,6 @@
 # Changelog video (optional)
 
-A 15 to 25 second animated recap of the issue, built from the same screenshots. It is for social and community posts, not the email (most mail clients do not play video). Make it only when the user asks, and only after the copy is approved and the email is sent.
+A 15 to 25 second animated recap of the issue, built from the same screenshots. It is for social and community posts, not the email (most mail clients do not play video). Make it only when the user asks, and only after the email is sent.
 
 ## Approach
 
@@ -55,4 +55,4 @@ export const Video = () => (
 
 Inside `FeatureBeat`, drive everything from `useCurrentFrame()` with `spring()` and `interpolate()`: word-by-word headline entrance, headline translate and scale after about 25 frames, screenshot translateY plus a small rotateX settle, a slow overall scale from 1.0 to 1.05, and scale plus blur plus opacity out in the last 10 frames.
 
-Before the full render, spot-check a few frames with `npx remotion still` and fix layout. Then `npx remotion render` and hand the user the local mp4. Do not post it anywhere yourself.
+Before the full render, spot-check a few frames with `npx remotion still` and fix layout. Then `npx remotion render`. Hand the user the local mp4, and attach it to the community post if that channel has a posting tool in `social.post_via`. If the team needs a paid Remotion license, ask the user before using it commercially: that is money.

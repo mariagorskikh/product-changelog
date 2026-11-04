@@ -8,6 +8,11 @@
 # FROM_EMAIL, AUDIENCE_ID) or to a yourproduct.example address counts as
 # missing. The scripts refuse to run with it, and Claude asks you for it.
 
+autonomy:
+  mode: autonomous        # autonomous (default): asks setup questions once, then does the whole job and reports after.
+                          # review: stops for the user's okay before each outward action (the old gates).
+  money_needs_approval: true   # always true: anything that spends money waits for the user's yes
+
 product:
   name: "PRODUCT_NAME"                         # e.g. Acme
   website: "https://yourproduct.example"
@@ -22,7 +27,7 @@ sender:
   from_email: "FROM_EMAIL"                      # must be on a domain verified with your provider
   reply_to: "FROM_EMAIL"                        # replies are the best feedback you get; use a read inbox
 
-# Test sends go only to these people until the copy is approved.
+# Test sends go only to these people, before the real send.
 test_recipients:
   - name: "YOUR_NAME"
     email: "FROM_EMAIL"
@@ -79,6 +84,10 @@ provider:
   audience_id: "AUDIENCE_ID"                    # Resend audience/segment for broadcasts
   broadcast_target_field: "segment_id"          # use "audience_id" on older Resend accounts
   send_interval_seconds: 0.6                    # pace for one-by-one sends; stay under your rate limit
+  monthly_quota: 0                              # optional: emails your plan includes per month (0 = unknown, no check).
+                                                # A send that would go over it needs the user's yes (it costs money).
+  max_failures: 10                              # one-by-one blast stops after this many send errors (resumable)
+  max_failure_rate: 0.05                        # ...or when more than this share of sends fail (after 20 sends)
 
 unsubscribe:
   # broadcast: the provider hosts the unsubscribe page (simplest; use with broadcasts).
@@ -95,3 +104,10 @@ social:
   hook_prefix: "Latest changelog:"
   post_from: "company account, founder quote-posts it"
   community_opener: "Hey everyone, changelog #{n} is out:"
+  # How Claude posts each channel itself. Name a posting tool you have set up
+  # (an MCP server, a CLI, a webhook env var such as DISCORD_WEBHOOK_URL).
+  # Leave a channel empty and Claude hands you the final text and images instead.
+  post_via:
+    x: ""
+    linkedin: ""
+    community: ""

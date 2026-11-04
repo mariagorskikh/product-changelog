@@ -10,6 +10,12 @@ Dry run by default. Sending needs BOTH flags:
     python3 scripts/blast.py ISSUE_DIR                                   # dry run
     python3 scripts/blast.py ISSUE_DIR --send --yes-send-to-everyone     # real send
 
+Pass the send flags only after the copy is reviewed: by the self-review gate
+in autonomous mode (the agent passes them itself), or by the user in review
+mode. If provider.monthly_quota is set and this send would exceed it, the
+script refuses unless --yes-over-quota is passed, which needs the user's yes
+in chat in every mode because it costs money.
+
 ISSUE_DIR must contain:
     email.html, email.txt, subject.txt   the approved copy
     audience.jsonl                       {"email": ..., "name": ...} per line, built fresh
@@ -19,6 +25,11 @@ Filters: config `exclude`, unsubs.txt, invalid addresses, case-insensitive
 duplicates. Every message carries List-Unsubscribe and one-click headers.
 Resumable: results go to ISSUE_DIR/results.jsonl and a rerun skips every
 address already marked ok.
+
+Stops itself mid-send when provider errors pile up (provider.max_failures in
+total, or a failure share above provider.max_failure_rate after 20 sends),
+and exits 2. That is a hard stop: report it, fix the cause, then rerun the
+same command to resume.
 """
 
 from __future__ import annotations
@@ -32,15 +43,21 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _common import (  # noqa: E402
     EMAIL_RE, Resend, api_key, die, first_name, from_header, get, load_config,
-    personalize, read_email_set, read_issue, read_jsonl, require, unsubscribe_url,
+    personalize, quota_check, read_email_set, read_issue, read_jsonl, require,
+    unsubscribe_url,
 )
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("issue_dir")
-    ap.add_argument("--send", action="store_true")
-    ap.add_argument("--yes-send-to-everyone", action="store_true")
+    ap.add_argument("--send", action="store_true", help="really send (with --yes-send-to-everyone)")
+    ap.add_argument("--yes-send-to-everyone", action="store_true",
+                    help="confirms the whole audience; passed after the self-review gate (or the user's okay in review mode)")
+    ap.add_argument("--sent-this-month", type=int, default=0,
+                    help="emails already sent this month on the plan, for the quota check")
+    ap.add_argument("--yes-over-quota", action="store_true",
+                    help="only after the user's explicit yes in chat: going over the quota costs money")
     ap.add_argument("--config")
     args = ap.parse_args()
 
@@ -100,10 +117,16 @@ def main() -> None:
     for e, n in queue[:5]:
         print(f"  sample: {e} -> Hi {n},")
 
+    quota_check(cfg, len(queue), args.sent_this_month, args.yes_over_quota)
+
     if not (args.send and args.yes_send_to_everyone):
-        print("\nDRY RUN: nothing sent. After explicit approval of the final copy and a "
-              "test send, re-run with --send --yes-send-to-everyone.")
+        print("\nDRY RUN: nothing sent. Once the copy passed review (self-review gate in autonomous "
+              "mode, the user's okay in review mode) and the test copy read back clean, "
+              "re-run with --send --yes-send-to-everyone.")
         return
+
+    max_failures = int(get(cfg, "provider.max_failures", 10))
+    max_rate = float(get(cfg, "provider.max_failure_rate", 0.05))
 
     client = Resend(api_key(cfg))
     sent = failed = 0
@@ -133,6 +156,12 @@ def main() -> None:
             else:
                 failed += 1
                 print(f"FAIL {email}: {info}", flush=True)
+                done = sent + failed
+                if failed >= max_failures or (done >= 20 and failed / done > max_rate):
+                    print(f"STOPPED: {failed} failures in {done} sends (limits: {max_failures} total, "
+                          f"{max_rate:.0%} rate). Nothing more was sent. Fix the cause, then rerun "
+                          "the same command to resume; addresses already sent are skipped.", flush=True)
+                    sys.exit(2)
             if (i + 1) % 50 == 0:
                 rate = (i + 1) / (time.time() - start)
                 eta = (len(queue) - i - 1) / rate / 60

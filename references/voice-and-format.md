@@ -4,7 +4,7 @@ Rules for the changelog email itself. They come from many rounds of real edits o
 
 ## Picking what goes in
 
-- Source the candidates: `git log --since=<last issue date> --no-merges --oneline`, merged pull requests, release notes, the public roadmap, support threads that got resolved. Ask the user what shipped that is not in git (pricing, partnerships, docs).
+- Source the candidates: `git log --since=<last issue date> --no-merges --oneline`, merged pull requests, release notes, the public roadmap, support threads that got resolved. Optionally ask the user what shipped that is not in git (pricing, partnerships, docs); if they are not around, go ahead with git and release notes.
 - Keep only **user-visible** changes. Refactors, infra moves, dependency bumps and internal tools are out unless a user would notice the result (faster, cheaper, fewer errors). Then write about the result, not the work.
 - **3 to 5 items.** Fewer, better items beat a long list. If 8 things shipped, the bottom 3 wait or go into one closing sentence.
 - **Rank by usefulness to the reader**, not by effort or by what the team is proudest of. Lead with the change that most readers can use today.
@@ -48,7 +48,7 @@ These read as marketing filler or as AI-written. The linter flags the ones in `v
 - "Join us here", "Don't miss out"
 - Any internal or retired product term. Keep a list of those in `voice.banned_phrases` too.
 
-Optional house style, on by default (`voice.no_dashes: true`): no em dashes or en dashes anywhere. Use a comma, a colon, a period or a plain hyphen. Also sweep the HTML entities (`&mdash;`, `&ndash;`). Many readers now treat the em dash as an AI tell.
+Optional house style, on by default (`voice.no_dashes: true`): no em dashes or en dashes anywhere. Use a comma, a colon, a period or a plain hyphen. Also sweep the HTML entity forms (`mdash` and `ndash`, named or numeric). Many readers now treat the em dash as an AI tell.
 
 ## HTML styling: styled-minimal
 
@@ -67,7 +67,7 @@ Fully plain text looks broken in modern clients, and heavy templates look like m
 - Plain, readable URLs. Deep links to the exact page or setting, not the homepage.
 - No UTM clutter unless the user wants it; if they do, keep it consistent.
 
-## Self-review before showing the draft
+## Self-review before anything goes out
 
 Read it once as a busy customer would, top to bottom, and fix anything that fails:
 

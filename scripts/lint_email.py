@@ -31,7 +31,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _common import USER_AGENT, get, load_config  # noqa: E402
 
-DASHES = re.compile("[\u2013\u2014]|&mdash;|&ndash;|&#8211;|&#8212;|&#x2013;|&#x2014;", re.I)
+# Literal em/en dashes plus their HTML entity forms (named, decimal, hex).
+DASHES = re.compile("[\u2013\u2014]|&(?:mdash|ndash|#8211|#8212|#x2013|#x2014);", re.I)
 
 
 def check_url(url: str) -> str | None:

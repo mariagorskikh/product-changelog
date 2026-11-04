@@ -81,6 +81,25 @@ def api_key(cfg: dict) -> str:
     return key
 
 
+def quota_check(cfg: dict, planned: int, sent_this_month: int, approved: bool) -> None:
+    """Refuse a send that would exceed provider.monthly_quota.
+
+    Going over the plan's included volume costs money (overage or a plan
+    upgrade), so it needs the user's explicit yes in chat in every autonomy
+    mode. The agent passes --yes-over-quota only after that yes. A quota of
+    0 or unset means unknown, and the check is skipped with a note.
+    """
+    quota = int(get(cfg, "provider.monthly_quota", 0) or 0)
+    if quota <= 0:
+        print("quota:     provider.monthly_quota not set; no quota check")
+        return
+    total = sent_this_month + planned
+    print(f"quota:     {sent_this_month} sent this month + {planned} planned = {total} of {quota} included")
+    if total > quota and not approved:
+        die(f"this send would exceed the plan's monthly quota by {total - quota} emails, which costs money. "
+            "Ask the user in chat; only after their explicit yes, re-run with --yes-over-quota.")
+
+
 # ---------------------------------------------------------------- people
 
 def first_name(raw: str | None) -> str:
