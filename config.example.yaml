@@ -1,0 +1,97 @@
+# product-changelog configuration
+#
+# Copy this file to config.yaml (same folder, or your project root) and fill it in.
+# config.yaml is gitignored. Secrets never go in this file: they live in
+# environment variables (see the *_env keys below).
+#
+# Anything still set to an UPPERCASE placeholder (PRODUCT_NAME, SENDER_NAME,
+# FROM_EMAIL, AUDIENCE_ID) or to a yourproduct.example address counts as
+# missing. The scripts refuse to run with it, and Claude asks you for it.
+
+product:
+  name: "PRODUCT_NAME"                         # e.g. Acme
+  website: "https://yourproduct.example"
+  dashboard_url: "https://yourproduct.example/app"   # where the hero screenshot links
+  docs_url: "https://yourproduct.example/docs"
+  changelog_page: ""                            # optional public web changelog page
+
+sender:
+  name: "SENDER_NAME"                           # a real person reads better than "The Team"
+  title: "Cofounder, PRODUCT_NAME"              # line under the name in the sign-off
+  from_display: "SENDER_NAME at PRODUCT_NAME"   # what shows in the inbox
+  from_email: "FROM_EMAIL"                      # must be on a domain verified with your provider
+  reply_to: "FROM_EMAIL"                        # replies are the best feedback you get; use a read inbox
+
+# Test sends go only to these people until the copy is approved.
+test_recipients:
+  - name: "YOUR_NAME"
+    email: "FROM_EMAIL"
+
+# Never sent the real blast (founders, test accounts, demo users).
+# They get test copies instead. Lowercase.
+exclude: []
+
+brand:
+  link_color: "#2563eb"
+  text_color: "#1a1a1a"
+  muted_color: "#8a8a8a"
+  image_border: "#e2e2e2"
+  font_stack: "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+
+email:
+  cadence: "weekly"                             # weekly, biweekly, monthly
+  opener: "Here's what's new on PRODUCT_NAME this week."
+  greeting_fallback: "there"                    # "Hi there," when no usable first name
+  sign_off: "Best,"
+  max_items: 5
+  unsubscribe_line: "If you'd rather not receive these, <a href=\"{{UNSUB_URL}}\">unsubscribe here</a>."
+
+voice:
+  # Free-form notes Claude follows when drafting. Add your own after every edit round.
+  notes:
+    - "Flowing sentences, not labeled bullets."
+    - "Describe features modestly and concretely. A new view is a new view, not a platform."
+    - "One bold accent per paragraph at most."
+  # Phrases the linter flags. Case-insensitive substring match.
+  banned_phrases:
+    - "excited to announce"
+    - "thrilled to"
+    - "game-changer"
+    - "game changer"
+    - "seamless"
+    - "revolutionize"
+    - "unlock"
+    - "leverage"
+    - "delve"
+    - "in today's fast-paced"
+  no_dashes: true                               # flag em and en dashes (optional house style)
+
+links:                                          # real, working URLs only; Claude checks each returns 200
+  pricing: ""
+  booking: ""                                   # e.g. a calendar link for "book a call"
+  x_account: ""
+  linkedin_page: ""
+  community: ""                                 # Discord or Slack invite, if you have one
+
+provider:
+  name: "resend"                                # the bundled scripts speak Resend's API
+  api_key_env: "RESEND_API_KEY"                 # env var holding a key with sending + audience access
+  audience_id: "AUDIENCE_ID"                    # Resend audience/segment for broadcasts
+  broadcast_target_field: "segment_id"          # use "audience_id" on older Resend accounts
+  send_interval_seconds: 0.6                    # pace for one-by-one sends; stay under your rate limit
+
+unsubscribe:
+  # broadcast: the provider hosts the unsubscribe page (simplest; use with broadcasts).
+  # own_endpoint: you host it; scripts mint a signed per-address link from url_template.
+  mode: "broadcast"
+  url_template: "https://yourproduct.example/unsubscribe?email={email}&token={token}"
+  secret_env: "UNSUBSCRIBE_SECRET"              # token = base64url(HMAC-SHA256(secret, lowercase email))
+
+paths:
+  issues_dir: "./changelog-issues"              # one folder per issue: NNN-YYYY-MM-DD-slug/
+  image_base_url: "https://yourproduct.example/email/"   # where hosted screenshots live
+
+social:
+  hook_prefix: "Latest changelog:"
+  post_from: "company account, founder quote-posts it"
+  community_opener: "Hey everyone, changelog #{n} is out:"

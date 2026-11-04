@@ -1,0 +1,33 @@
+<!--
+  Changelog email template. Copy into a new issue folder as email.html.
+  [[...]] markers are filled at draft time from config.yaml and the issue content.
+  {{NAME}} and {{UNSUB_URL}} stay as they are: the send scripts fill them per recipient.
+  Repeat the feature block once per item (3 to 5 items). One screenshot per item at most.
+  Delete this comment before sending.
+-->
+<div style="max-width:600px;margin:0 auto;padding:24px 16px;font-family:[[FONT_STACK]];font-size:15px;line-height:1.65;color:[[TEXT_COLOR]];">
+  <p style="margin:0 0 16px;">Hi {{NAME}},</p>
+
+  <p style="margin:0 0 16px;">[[OPENER]]</p>
+
+  <!-- feature block: lead item -->
+  <p style="margin:0 0 16px;">[[ONE OR TWO SENTENCES: WHAT CHANGED AND WHY IT MATTERS. ONE <strong>BOLD ACCENT</strong>.]]</p>
+
+  <p style="margin:0 0 12px;">
+    <a href="[[DEEP LINK TO THE FEATURE]]">
+      <img src="[[IMAGE_BASE_URL]][[ISSUE]]-[[SLUG]].png" alt="[[WHAT THE SCREENSHOT SHOWS, IN PLAIN WORDS]]" width="600" style="display:block;width:100%;max-width:600px;height:auto;border-radius:8px;border:1px solid [[IMAGE_BORDER]];" />
+    </a>
+  </p>
+
+  <p style="margin:0 0 16px;"><a href="[[DEEP LINK]]" style="color:[[LINK_COLOR]];"><strong>[[SHORT CALL TO ACTION]]</strong></a>.</p>
+  <!-- end feature block -->
+
+  <!-- smaller item without a screenshot -->
+  <p style="margin:0 0 16px;"><strong>[[FEATURE NAME]]</strong> [[ONE PLAIN SENTENCE]]. <a href="[[DOCS LINK]]" style="color:[[LINK_COLOR]];">[[READ THE DOCS]]</a>.</p>
+
+  <p style="margin:0 0 16px;">[[OPTIONAL PERSONAL P.S., e.g. "BTW, ..." or "Oh and one last thing, ..."]]</p>
+
+  <p style="margin:0 0 16px;">[[SIGN_OFF]]<br />[[SENDER_NAME]]<br />[[SENDER_TITLE]]</p>
+
+  <p style="margin:0;font-size:12px;color:[[MUTED_COLOR]];">If you'd rather not receive these, <a href="{{UNSUB_URL}}" style="color:[[MUTED_COLOR]];">unsubscribe here</a>.</p>
+</div>

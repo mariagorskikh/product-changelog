@@ -1,0 +1,17 @@
+Hi {{NAME}},
+
+[[OPENER]]
+
+[[LEAD ITEM: ONE OR TWO SENTENCES, WHAT CHANGED AND WHY IT MATTERS.]]
+
+[[SHORT CALL TO ACTION]]: [[DEEP LINK]]
+
+[[FEATURE NAME]] [[ONE PLAIN SENTENCE]]. [[DOCS LINK]]
+
+[[OPTIONAL PERSONAL P.S.]]
+
+[[SIGN_OFF]]
+[[SENDER_NAME]]
+[[SENDER_TITLE]]
+
+If you'd rather not receive these, unsubscribe here: {{UNSUB_URL}}
